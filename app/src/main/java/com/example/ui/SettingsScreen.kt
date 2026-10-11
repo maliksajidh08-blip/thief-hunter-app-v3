@@ -1,0 +1,2126 @@
+package com.example.ui
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material3.LinearProgressIndicator
+import com.example.data.AlarmSoundType
+import com.example.data.BatteryMode
+import com.example.data.Screen
+import java.util.Locale
+import com.example.security.ChargerGuardEnvironment
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Power
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import com.example.security.AIDecisionAction
+import com.example.security.AIDecisionScenario
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.data.AppLanguage
+import com.example.ui.theme.AlertRed
+import com.example.ui.theme.NavyCardDark
+import com.example.ui.theme.NavyDark
+import com.example.ui.theme.NavyPrimary
+import com.example.ui.theme.SafeGreen
+import com.example.ui.theme.YellowAccent
+import com.example.ui.theme.YellowDark
+
+@Composable
+fun SettingsScreen(
+    viewModel: ThiefHunterViewModel,
+    modifier: Modifier = Modifier
+) {
+    val state by viewModel.uiState.collectAsState()
+    val scrollState = rememberScrollState()
+    val config = state.guardConfig
+
+    var pinText by remember(state.masterPin) { mutableStateOf(state.masterPin) }
+    var showProfileDialog by remember { mutableStateOf(false) }
+    val profile = state.aiProfile
+    val aiDecision = state.sensorTelemetry.aiDecision ?: state.aiDecision
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = viewModel.tr("settings"),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
+
+        Text(
+            text = "Configure security triggers, sensor thresholds, background service and master credentials.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // 0. EXTREME BATTERY SAVER & THERMAL MANAGEMENT (Tecno Spark 6 Go & Old Phones)
+        val batteryInfo = state.batteryThermalInfo
+        val batteryMode = state.batteryMode
+
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.5.dp,
+                    if (batteryMode == BatteryMode.ULTRA_LOW) SafeGreen.copy(alpha = 0.7f) else YellowAccent.copy(alpha = 0.5f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_battery_saver")
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(SafeGreen.copy(alpha = 0.15f))
+                        ) {
+                            Text("🔋", fontSize = 20.sp)
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Battery Saver",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Extreme optimization for Tecno Spark 6 Go (2020)",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = if (batteryMode == BatteryMode.ULTRA_LOW) SafeGreen.copy(alpha = 0.2f) else YellowAccent.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = batteryMode.shortName.uppercase(),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (batteryMode == BatteryMode.ULTRA_LOW) SafeGreen else NavyPrimary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // [Ultra Low] [Balanced] [Perf] 3-level mode selector
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    BatteryMode.values().forEach { mode ->
+                        val isSelected = batteryMode == mode
+                        val tag = when (mode) {
+                            BatteryMode.ULTRA_LOW -> "btn_mode_ultra_low"
+                            BatteryMode.BALANCED -> "btn_mode_balanced"
+                            BatteryMode.PERFORMANCE -> "btn_mode_perf"
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) {
+                                if (mode == BatteryMode.ULTRA_LOW) SafeGreen else NavyPrimary
+                            } else Color.Transparent,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clickable { viewModel.setBatteryMode(mode) }
+                                .testTag(tag)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(mode.icon, fontSize = 12.sp)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = mode.shortName,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Telemetry summary rows matching user diagram:
+                // Current: 50% 🔋
+                // Estimated: 3h 20m ⏱️
+                // Temperature: 38°C 🌡️
+                // Status: Cool ✅
+                Surface(
+                    color = NavyDark.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Current:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${batteryInfo.level}% 🔋", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Estimated:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(batteryInfo.estimatedTimeRemaining, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = SafeGreen)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Temperature:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                "${String.format(Locale.US, "%.0f°C", batteryInfo.temperatureCelsius)} 🌡️",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (batteryInfo.temperatureCelsius >= 40f) AlertRed else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Status:", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                batteryInfo.status,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (batteryInfo.status.contains("Cool")) SafeGreen else AlertRed
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Mode Explanation bullets
+                Text(
+                    text = when (batteryMode) {
+                        BatteryMode.ULTRA_LOW -> "⚡ Ultra Low Mode Active:\n• Sensors read every 5s (when armed only)\n• Night sleep quiet hours (10 PM - 6 AM)\n• GPS off until phone is stolen or alert triggered\n• Camera auto-closes after 5 seconds"
+                        BatteryMode.BALANCED -> "⚖️ Balanced Mode Active:\n• SENSOR_DELAY_NORMAL with 1s throttling\n• GPS every 10 minutes using Balanced Power\n• Event-driven AI on movement\n• Thermal safeguards (>40°C pause heavy tasks)"
+                        BatteryMode.PERFORMANCE -> "🚀 Performance Mode Active:\n• Real-time high-speed sensor sampling\n• 30s continuous GPS location updates\n• Maximum alarm responsiveness"
+                    },
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (batteryInfo.temperatureCelsius >= 40f) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = AlertRed.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (batteryInfo.temperatureCelsius >= 45f)
+                                "🛑 Overheating (>45°C): Hardware sensors paused for thermal cooldown."
+                            else
+                                "⚠️ High Temperature (>40°C): Heavy tasks paused to cool down phone.",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AlertRed,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Memory / Cache Cleanup Action Button
+                OutlinedButton(
+                    onClick = { viewModel.runMemoryCleanup() },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(38.dp)
+                        .testTag("btn_clean_memory")
+                ) {
+                    Text("🧹 Clean Memory & Trim Cache (Free RAM)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // AI LEARNING CARD (7-Day Owner Behavioral Learning System)
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.5.dp,
+                    NavyPrimary.copy(alpha = 0.6f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_ai_learning")
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(NavyPrimary.copy(alpha = 0.15f))
+                        ) {
+                            Text("🤖", fontSize = 20.sp)
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "AI Learning",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "7-Day Behavioral Pattern Engine",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = if (profile.learningDay >= 7) SafeGreen.copy(alpha = 0.2f) else YellowAccent.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (profile.learningDay >= 7) "Calibrated" else "Day ${profile.learningDay}/7",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (profile.learningDay >= 7) SafeGreen else YellowDark,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Status
+                Text(
+                    text = "Status: ${profile.statusText}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = profile.getDayFocusDescription(),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
+                )
+
+                // Progress
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Progress",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${(profile.learningProgress * 100).toInt()}%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { profile.learningProgress.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = NavyPrimary,
+                    trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Confidence
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Confidence",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${(profile.confidenceScore * 100).toInt()}%",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SafeGreen
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { profile.confidenceScore.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = SafeGreen,
+                    trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Live AI Decision badge
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Live Scenario: ${aiDecision.scenario.title}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = aiDecision.explanation,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2
+                            )
+                        }
+                        Surface(
+                            color = when (aiDecision.decision) {
+                                AIDecisionAction.NO_ALARM, AIDecisionAction.WATCH_MODE -> SafeGreen.copy(alpha = 0.2f)
+                                else -> AlertRed.copy(alpha = 0.2f)
+                            },
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = aiDecision.decision.label,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when (aiDecision.decision) {
+                                    AIDecisionAction.NO_ALARM, AIDecisionAction.WATCH_MODE -> SafeGreen
+                                    else -> AlertRed
+                                },
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Action buttons: [Start Learning] [Reset]
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.startAiLearning() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .testTag("btn_start_ai_learning"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                    ) {
+                        Text("Start Learning", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = { viewModel.resetAiLearning() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .testTag("btn_reset_ai_learning"),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Reset", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Secondary row: [View Profile] and [Advance Day]
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { showProfileDialog = true },
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(38.dp)
+                            .testTag("btn_view_ai_profile"),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = YellowAccent)
+                    ) {
+                        Text("👁️ View Profile", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    }
+
+                    OutlinedButton(
+                        onClick = { viewModel.advanceAiLearningDay() },
+                        modifier = Modifier
+                            .weight(0.8f)
+                            .height(38.dp)
+                            .testTag("btn_advance_ai_day"),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Next Day ⏩", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        // View Profile Dialog
+        if (showProfileDialog) {
+            AlertDialog(
+                onDismissRequest = { showProfileDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🤖 Owner Behavior Profile", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Calibrated parameters after on-device continuous training. AI compares all live phone interactions against this baseline.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        // 1. Touch Pattern (Day 1-2)
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("👆 Day 1-2: Touch Pattern", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NavyPrimary)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("• Finger Size: ${String.format("%.2f", profile.touchProfile.averageFingerSize)} (contact area)", fontSize = 11.sp)
+                                Text("• Pressure Pattern: ${String.format("%.2f", profile.touchProfile.averagePressure)} (normalized)", fontSize = 11.sp)
+                                Text("• Pressure Variance: ${String.format("%.3f", profile.touchProfile.pressureVariance)}", fontSize = 11.sp)
+                                Text("• Touch Duration: ${profile.touchProfile.averageTouchDurationMs.toInt()} ms", fontSize = 11.sp)
+                                Text("• Swipe Speed: ${profile.touchProfile.averageSwipeSpeed.toInt()} px/s", fontSize = 11.sp)
+                                Text("• Samples: ${profile.touchProfile.sampleCount}", fontSize = 10.sp, color = SafeGreen)
+                            }
+                        }
+
+                        // 2. Lift Pattern (Day 3-4)
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("📱 Day 3-4: Lift Pattern", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NavyPrimary)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("• Lift Speed: ${String.format("%.2f", profile.liftProfile.averageLiftSpeedMs)} m/s", fontSize = 11.sp)
+                                Text("• Lift Angle: ${String.format("%.1f°", profile.liftProfile.averageLiftAngleDeg)}", fontSize = 11.sp)
+                                Text("• Rotation Pattern: ${String.format("%.1f°", profile.liftProfile.averageRotationDeg)}", fontSize = 11.sp)
+                                Text("• Time to Lift: ${profile.liftProfile.averageTimeToLiftMs.toInt()} ms", fontSize = 11.sp)
+                                Text("• Samples: ${profile.liftProfile.sampleCount}", fontSize = 10.sp, color = SafeGreen)
+                            }
+                        }
+
+                        // 3. Grip Pattern (Day 5-6)
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("🤝 Day 5-6: Grip Pattern", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NavyPrimary)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("• Finger Count: ${String.format("%.1f", profile.gripProfile.averageFingerCount)} fingers", fontSize = 11.sp)
+                                Text("• Grip Position: ${(profile.gripProfile.gripPositionRatio * 100).toInt()}% screen height", fontSize = 11.sp)
+                                Text("• Pressure Consistency: ${(profile.gripProfile.pressureConsistency * 100).toInt()}%", fontSize = 11.sp)
+                                Text("• Natural Movement: ${String.format("%.3f", profile.gripProfile.naturalMovementVariance)} var", fontSize = 11.sp)
+                                Text("• Samples: ${profile.gripProfile.sampleCount}", fontSize = 10.sp, color = SafeGreen)
+                            }
+                        }
+
+                        // 4. Gait Pattern (Day 7)
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("🚶 Day 7: Gait Pattern", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = NavyPrimary)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("• Step Frequency: ${String.format("%.2f", profile.gaitProfile.averageStepFrequencyHz)} Hz", fontSize = 11.sp)
+                                Text("• Stride Length: ${String.format("%.2f", profile.gaitProfile.strideLengthMeters)} m", fontSize = 11.sp)
+                                Text("• Acceleration Peak: ${String.format("%.2f", profile.gaitProfile.peakAcceleration)} m/s²", fontSize = 11.sp)
+                                Text("• Oscillation Variance: ${String.format("%.3f", profile.gaitProfile.walkingOscillationVariance)}", fontSize = 11.sp)
+                                Text("• Samples: ${profile.gaitProfile.sampleCount}", fontSize = 10.sp, color = SafeGreen)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showProfileDialog = false }) {
+                        Text("Close", fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 1. ALL 6 SECURITY FEATURES MASTER CONFIGURATION
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Sensor Security Triggers (On/Off)",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NavyPrimary
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Feature 1: Pocket Detection
+                SettingToggleRow(
+                    title = "1. Pocket Detection Alarm",
+                    subtitle = "Proximity + Light sensors detect when pulled from pocket or handbag",
+                    checked = config.pocketDetectionEnabled,
+                    onCheckedChange = { viewModel.updateConfig { c -> c.copy(pocketDetectionEnabled = it) } },
+                    testTag = "settings_switch_pocket"
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Feature 2: Motion Detection
+                SettingToggleRow(
+                    title = "2. Motion Detection Alarm",
+                    subtitle = "Accelerometer detects unauthorized movement from table or surface",
+                    checked = config.motionDetectionEnabled,
+                    onCheckedChange = { viewModel.updateConfig { c -> c.copy(motionDetectionEnabled = it) } },
+                    testTag = "settings_switch_motion"
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Feature 3: Charger Unplug
+                SettingToggleRow(
+                    title = "3. Charger Disconnect Alarm",
+                    subtitle = "Fires sirens immediately if charging cable is unhooked",
+                    checked = config.chargerUnplugEnabled,
+                    onCheckedChange = { viewModel.updateConfig { c -> c.copy(chargerUnplugEnabled = it) } },
+                    testTag = "settings_switch_charger"
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Feature 4: USB Connection Alert
+                SettingToggleRow(
+                    title = "4. USB Cable Attachment Alert",
+                    subtitle = "Detects unauthorized computer/data theft USB interface",
+                    checked = config.usbConnectionEnabled,
+                    onCheckedChange = { viewModel.updateConfig { c -> c.copy(usbConnectionEnabled = it) } },
+                    testTag = "settings_switch_usb"
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Feature 5: Live GPS Tracking
+                SettingToggleRow(
+                    title = "5. Live GPS Satellite Tracking",
+                    subtitle = "Continuous coordinates updates and radar beacon",
+                    checked = config.liveGpsTrackingEnabled,
+                    onCheckedChange = { viewModel.updateConfig { c -> c.copy(liveGpsTrackingEnabled = it) } },
+                    testTag = "settings_switch_gps"
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Feature 6: Intruder Selfie
+                SettingToggleRow(
+                    title = "6. Intruder Selfie Capture",
+                    subtitle = "Silent photo snapshot & log saved upon failed PIN entry",
+                    checked = config.intruderSelfieEnabled,
+                    onCheckedChange = { viewModel.updateConfig { c -> c.copy(intruderSelfieEnabled = it) } },
+                    testTag = "settings_switch_selfie"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // FEATURE 7: MOTION SENSOR SENSITIVITY (Better)
+                Text(
+                    text = "Motion Sensor Sensitivity",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NavyPrimary
+                )
+                Text(
+                    text = "Filters out table vibrations. Requires physical lift (G-Force > 2.0, tilt angle > 20°).",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 6.dp)
+                )
+
+                val currentSensitivityLevel = when {
+                    config.motionSensitivity <= 1.5f -> 1
+                    config.motionSensitivity <= 2.5f -> 2
+                    else -> 3
+                }
+                val sensitivityLabel = when (currentSensitivityLevel) {
+                    1 -> "Low (Only big movements / high jerk)"
+                    2 -> "Medium (Normal - Lift > 2.0G [Default])"
+                    else -> "High (Sensitive to minor shifts)"
+                }
+
+                Text(
+                    text = "Active Level: $sensitivityLabel",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = YellowAccent
+                )
+
+                Slider(
+                    value = config.motionSensitivity,
+                    onValueChange = { viewModel.updateConfig { c -> c.copy(motionSensitivity = it) } },
+                    valueRange = 1f..3f,
+                    steps = 1,
+                    colors = SliderDefaults.colors(
+                        thumbColor = YellowAccent,
+                        activeTrackColor = NavyPrimary
+                    ),
+                    modifier = Modifier.testTag("slider_motion_sensitivity")
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        Triple(1f, "Low", "Big movements"),
+                        Triple(2f, "Medium (Def)", "Normal lift"),
+                        Triple(3f, "High", "Sensitive")
+                    ).forEach { (value, label, desc) ->
+                        val isSelected = when (value.toInt()) {
+                            1 -> config.motionSensitivity <= 1.5f
+                            2 -> config.motionSensitivity in 1.5f..2.5f
+                            else -> config.motionSensitivity > 2.5f
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSelected) NavyPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, YellowAccent) else null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    viewModel.updateConfig { c -> c.copy(motionSensitivity = value) }
+                                }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) YellowAccent else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = desc,
+                                    fontSize = 9.sp,
+                                    color = if (isSelected) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // FEATURE 4: ARM TIME SETTINGS CARD
+        var showCustomArmDialog by remember { mutableStateOf(false) }
+        var customArmInput by remember { mutableStateOf(config.armingDelaySeconds.toString()) }
+
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Arm Delay Settings",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NavyPrimary
+                        )
+                        Text(
+                            text = "Arm Delay: [ ${config.armingDelaySeconds} sec ]",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = YellowAccent
+                        )
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = NavyPrimary.copy(alpha = 0.1f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = null,
+                                tint = NavyPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Provides enough time to safely set the phone down or place inside pocket before sensors arm.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 6.dp)
+                )
+
+                // Presets: 10s, 20s, 30s (Default), 60s, Custom
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(10, 20, 30, 60).forEach { sec ->
+                        val isSelected = config.armingDelaySeconds == sec
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) NavyPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, YellowAccent) else null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    viewModel.updateConfig { c -> c.copy(armingDelaySeconds = sec) }
+                                    viewModel.showMessage("Arm delay set to $sec seconds")
+                                }
+                                .testTag("btn_arm_delay_$sec")
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "${sec}s",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) YellowAccent else MaterialTheme.colorScheme.onSurface
+                                )
+                                if (sec == 30) {
+                                    Text(
+                                        text = "Def",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Custom Option Button
+                    val isCustom = config.armingDelaySeconds !in listOf(10, 20, 30, 60)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isCustom) NavyPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                        border = if (isCustom) androidx.compose.foundation.BorderStroke(1.5.dp, YellowAccent) else null,
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .clickable {
+                                customArmInput = config.armingDelaySeconds.toString()
+                                showCustomArmDialog = true
+                            }
+                            .testTag("btn_arm_delay_custom")
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = if (isCustom) "${config.armingDelaySeconds}s" else "Custom",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isCustom) YellowAccent else MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Edit",
+                                fontSize = 9.sp,
+                                color = if (isCustom) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                if (showCustomArmDialog) {
+                    androidx.compose.ui.window.Dialog(onDismissRequest = { showCustomArmDialog = false }) {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = NavyDark),
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Text(
+                                    text = "Custom Arm Delay",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = YellowAccent
+                                )
+                                Text(
+                                    text = "Enter countdown duration in seconds (5 - 300 sec):",
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                                OutlinedTextField(
+                                    value = customArmInput,
+                                    onValueChange = { customArmInput = it.filter { ch -> ch.isDigit() } },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = YellowAccent,
+                                        unfocusedBorderColor = Color.Gray
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    OutlinedButton(onClick = { showCustomArmDialog = false }) {
+                                        Text("Cancel", color = Color.White)
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            val parsed = customArmInput.toIntOrNull()?.coerceIn(5, 300) ?: 30
+                                            viewModel.updateConfig { c -> c.copy(armingDelaySeconds = parsed) }
+                                            viewModel.showMessage("Arm delay set to $parsed seconds")
+                                            showCustomArmDialog = false
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = YellowAccent, contentColor = NavyDark)
+                                    ) {
+                                        Text("Save", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. FOREGROUND SERVICE STATUS & TOGGLE
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Foreground Guard Service",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NavyPrimary
+                        )
+                        Text(
+                            text = if (state.isServiceRunning) "Running in background (Persistent notification active)" else "Service stopped",
+                            fontSize = 11.sp,
+                            color = if (state.isServiceRunning) SafeGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = state.isServiceRunning,
+                        onCheckedChange = { shouldRun ->
+                            if (shouldRun) viewModel.startForegroundGuardService()
+                            else viewModel.stopForegroundGuardService()
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = YellowAccent,
+                            checkedTrackColor = NavyPrimary
+                        ),
+                        modifier = Modifier.testTag("switch_foreground_service")
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. MASTER SECURITY PIN
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = NavyPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = viewModel.tr("security_pin"),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NavyPrimary
+                    )
+                }
+
+                Text(
+                    text = "This PIN is required to disarm the alarm siren when triggered.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = pinText,
+                        onValueChange = { if (it.length <= 6) pinText = it },
+                        placeholder = { Text("4-6 Digits") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NavyPrimary),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("input_master_pin")
+                    )
+
+                    Button(
+                        onClick = {
+                            viewModel.updateMasterPin(pinText)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = YellowAccent,
+                            contentColor = NavyDark
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("btn_save_pin")
+                    ) {
+                        Text(text = viewModel.tr("save"), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 4. MULTI-LANGUAGE SELECTOR
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_language_selector")
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(NavyPrimary.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            tint = NavyPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = viewModel.tr("language_select"),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "English • اردو • हिन्दी • العربية • Español",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AppLanguage.values().forEach { lang ->
+                        val isSelected = state.selectedLanguage == lang
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) NavyPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.setLanguage(lang) }
+                                .testTag("lang_option_${lang.code}")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = lang.nativeName,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) YellowAccent else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = lang.displayName,
+                                        fontSize = 11.sp,
+                                        color = if (isSelected) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selected",
+                                        tint = YellowAccent,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 4B. OWNER FACE RECOGNITION TRAINING (BUG 2)
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    if (state.isFaceTrained) SafeGreen.copy(alpha = 0.5f) else YellowAccent.copy(alpha = 0.5f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_face_training")
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(if (state.isFaceTrained) SafeGreen.copy(alpha = 0.15f) else YellowAccent.copy(alpha = 0.15f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Face,
+                                contentDescription = null,
+                                tint = if (state.isFaceTrained) SafeGreen else NavyPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Train Owner Face",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (state.isFaceTrained) "Face Enrolled (${state.trainedFaceSamplesCount} photos saved in DB)" else "No face enrolled yet",
+                                fontSize = 11.sp,
+                                color = if (state.isFaceTrained) SafeGreen else AlertRed,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Two-Stage Protection: When lifted, alarm starts in 0.1s while AI scans face in parallel. If Owner recognized -> ALARM STOPS (<0.5s). If stranger -> ALARM INTENSIFIES louder!",
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (state.isFaceTrainingInProgress) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(NavyPrimary.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Live Viewfinder / Camera Simulation Box
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(130.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(NavyDark),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .border(2.dp, SafeGreen, CircleShape)
+                                        .padding(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Face,
+                                        contentDescription = null,
+                                        tint = SafeGreen,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Capturing Photo ${state.faceTrainingStep}/20...",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = YellowAccent
+                                )
+                                Text(
+                                    text = "Hold phone steady • Front camera active",
+                                    fontSize = 10.sp,
+                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        LinearProgressIndicator(
+                            progress = { state.faceTrainingStep / 20f },
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                            color = YellowAccent,
+                            trackColor = NavyPrimary.copy(alpha = 0.2f)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Calibrating biometric angles with ML Kit & saving to local database...",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    if (state.isFaceTrained) {
+                        // Owner Face Saved Confirmation Banner
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SafeGreen.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                                .border(1.dp, SafeGreen.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                .padding(10.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = SafeGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Owner Face Saved Successfully",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = SafeGreen
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "20 calibrated biometric samples enrolled. System will automatically recognize you on lift.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Test verification result badge if available
+                        if (!state.lastFaceTestResult.isNullOrBlank()) {
+                            val isSuccess = state.isOwnerFaceTestPassed == true
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        if (isSuccess) SafeGreen.copy(alpha = 0.15f) else AlertRed.copy(alpha = 0.15f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isSuccess) SafeGreen else AlertRed,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isSuccess) Icons.Default.Check else Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = if (isSuccess) SafeGreen else AlertRed,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = state.lastFaceTestResult ?: "",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSuccess) SafeGreen else AlertRed
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+
+                        // Test Buttons Row
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = { viewModel.testOwnerFace(simulateStranger = false) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SafeGreen,
+                                    contentColor = androidx.compose.ui.graphics.Color.White
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .testTag("btn_test_owner_face")
+                            ) {
+                                Icon(imageVector = Icons.Default.Face, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("TEST OWNER FACE", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+
+                            OutlinedButton(
+                                onClick = { viewModel.testOwnerFace(simulateStranger = true) },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .testTag("btn_test_stranger")
+                            ) {
+                                Text("TEST STRANGER", fontSize = 11.sp, color = AlertRed, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = { viewModel.startFaceTraining() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = YellowAccent,
+                                contentColor = NavyDark
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .testTag("btn_train_face")
+                        ) {
+                            Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (state.isFaceTrained) "RE-TRAIN FACE (20 PHOTOS)" else "TRAIN FACE (CAPTURE 20 PHOTOS)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        if (state.isFaceTrained) {
+                            OutlinedButton(
+                                onClick = { viewModel.clearFaceTraining() },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .testTag("btn_clear_face")
+                            ) {
+                                Text("Reset", fontSize = 11.sp, color = AlertRed)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 5. ALARM SOUND OPTIONS (Play Store Feature A)
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_alarm_sounds")
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(NavyPrimary.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VolumeUp,
+                            contentDescription = null,
+                            tint = NavyPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Alarm Sound Options",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Select high-decibel siren tone for theft breaches",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AlarmSoundType.values().forEach { sound ->
+                        val isSelected = state.selectedAlarmSound == sound
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) NavyPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, YellowAccent) else null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.setAlarmSound(sound) }
+                                .testTag("sound_option_${sound.id}")
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(text = sound.icon, fontSize = 16.sp)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = sound.displayName,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) YellowAccent else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = sound.description,
+                                            fontSize = 10.sp,
+                                            lineHeight = 14.sp,
+                                            color = if (isSelected) Color.White.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) YellowAccent else NavyPrimary.copy(alpha = 0.15f),
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clickable { viewModel.previewAlarmSound(sound) }
+                                        .testTag("btn_preview_${sound.id}")
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "Test Sound",
+                                            tint = if (isSelected) NavyDark else NavyPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 6. CHARGER GUARD (ENHANCED) PUBLIC CHARGING PROTECTION CARD
+        val isChargerActive = state.isChargerGuardActive
+        val chargerState = state.chargerGuardState
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    if (isChargerActive) YellowAccent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_charger_guard")
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(if (isChargerActive) YellowAccent.copy(alpha = 0.2f) else NavyPrimary.copy(alpha = 0.1f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Power,
+                                contentDescription = null,
+                                tint = if (isChargerActive) YellowDark else NavyPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Charger Guard (Enhanced)",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Public charging protection (Airports, cafes, offices)",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = isChargerActive,
+                        onCheckedChange = { viewModel.toggleChargerGuard() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = YellowAccent,
+                            checkedTrackColor = NavyPrimary
+                        ),
+                        modifier = Modifier.testTag("switch_charger_guard")
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isChargerActive) SafeGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isChargerActive) SafeGreen else Color.Gray)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isChargerActive) "ARMED: Unplug or phone movement triggers LOUD ALARM" else "Standby: Tap switch to arm before public charging",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isChargerActive) SafeGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Charging Environment Preset:",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    ChargerGuardEnvironment.values().forEach { env ->
+                        val isEnvSelected = chargerState.environment == env
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isEnvSelected) NavyPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { viewModel.setChargerGuardEnvironment(env) }
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            ) {
+                                Text(text = env.icon, fontSize = 14.sp)
+                                Text(
+                                    text = env.label.split(" ").first(),
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isEnvSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isEnvSelected) YellowAccent else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 7. LEGAL, PRIVACY POLICY & ABOUT CARD (Play Store Ready)
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+                .testTag("card_privacy_about")
+        ) {
+            val context = LocalContext.current
+            fun openPrivacyUrl() {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://maliksajidh08-blip.github.io/thief-hunter-website/privacy.html"))
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            }
+
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(NavyPrimary.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = NavyPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Play Store Compliance & About",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Thief Hunter Guard v1.0.0 • Legal & Transparency",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Privacy Policy Link
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { openPrivacyUrl() }
+                        .testTag("btn_settings_privacy_policy")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Policy,
+                                contentDescription = null,
+                                tint = NavyPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Privacy Policy",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "maliksajidh08-blip.github.io/thief-hunter-website/privacy.html",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            tint = YellowDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // About Screen Button
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.navigateTo(Screen.ABOUT) }
+                        .testTag("btn_settings_about")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = NavyPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "About Thief Hunter Guard",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Version 1.0.0 • Support: sajidhr905@gmail.com",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            tint = YellowDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // GOOGLE ACCOUNT & LOGOUT SECTION
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = NavyCardDark),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1A73E8))
+                        ) {
+                            Text(
+                                text = (state.userEmail ?: "G").take(1).uppercase(),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Google Account",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = state.userEmail ?: state.familyNetwork.accountEmail,
+                                fontSize = 12.sp,
+                                color = YellowAccent
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = SafeGreen.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "SYNCED",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SafeGreen,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "All devices registered under ${state.userEmail ?: state.familyNetwork.accountEmail} stay synchronized across the Family Security Network.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // LOGOUT BUTTON
+                Button(
+                    onClick = {
+                        viewModel.logout()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AlertRed,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("btn_logout")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = "Logout",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Logout",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+    }
+}
+
+@Composable
+fun SettingToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    testTag: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = YellowAccent,
+                checkedTrackColor = NavyPrimary
+            ),
+            modifier = Modifier.testTag(testTag)
+        )
+    }
+}
