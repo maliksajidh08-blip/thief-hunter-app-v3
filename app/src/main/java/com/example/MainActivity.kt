@@ -78,6 +78,7 @@ import com.example.ui.FamilyNetworkScreen
 import com.example.ui.HomeScreen
 import com.example.ui.IntruderSelfieScreen
 import com.example.ui.LiveTrackingScreen
+import com.example.ui.WebViewTrackingScreen
 import com.example.ui.LoginScreen
 import com.example.ui.MyMobilesScreen
 import com.example.ui.ReportTheftScreen
@@ -213,6 +214,22 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
     LaunchedEffect(state.isLoggedIn, state.currentScreen) {
         if (state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN && !state.isLoggedIn) {
             viewModel.navigateTo(Screen.LOGIN)
+        }
+    }
+
+    // Ensure location permission is requested when user enters Live Tracking screen
+    LaunchedEffect(state.currentScreen) {
+        if (state.currentScreen == Screen.LIVE_TRACKING) {
+            val locationPerms = listOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            val missing = locationPerms.filter {
+                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (missing.isNotEmpty()) {
+                permissionsLauncher.launch(missing.toTypedArray())
+            }
         }
     }
 
@@ -379,7 +396,7 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
                     Screen.INTRUDER_SELFIE -> IntruderSelfieScreen(viewModel = viewModel)
                     Screen.MY_MOBILES -> MyMobilesScreen(viewModel = viewModel)
                     Screen.STOLEN_DEVICES -> StolenDevicesScreen(viewModel = viewModel)
-                    Screen.LIVE_TRACKING -> LiveTrackingScreen(viewModel = viewModel)
+                    Screen.LIVE_TRACKING -> WebViewTrackingScreen(viewModel = viewModel)
                     Screen.COMMUNITY -> CommunityScreen(viewModel = viewModel)
                     Screen.REPORT_THEFT -> ReportTheftScreen(viewModel = viewModel)
                     Screen.SETTINGS -> SettingsScreen(viewModel = viewModel)
