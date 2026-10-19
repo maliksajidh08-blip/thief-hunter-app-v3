@@ -28,8 +28,8 @@ data class FamilyDeviceEntity(
     val isStolen: Boolean = false,
     val isLocked: Boolean = false,
     val isSirenActive: Boolean = false,
-    val latitude: Double = 31.5204,
-    val longitude: Double = 74.3587,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
     val address: String = "Liberty Market, Lahore",
     val lastSeenTime: String = "Active now",
     val simNumber: String = "+92 300 ••••111",
@@ -171,8 +171,8 @@ data class UserDeviceEntity(
     val isStolen: Boolean = false,
     val stolenTimestamp: String? = null,
     val emergencyContactPhone: String = "+92 300 4589211",
-    val lastKnownLatitude: Double = 31.5204,
-    val lastKnownLongitude: Double = 74.3587
+    val lastKnownLatitude: Double = 0.0,
+    val lastKnownLongitude: Double = 0.0
 )
 
 @Dao

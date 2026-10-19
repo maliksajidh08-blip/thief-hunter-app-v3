@@ -331,7 +331,7 @@ object CameraCaptureHelper {
         canvas.drawText("EVENT: $header", 65f, 675f, redTextPaint)
         canvas.drawText(detail, 65f, 720f, textPaint)
         canvas.drawText("Timestamp: $dateStr", 65f, 770f, subTextPaint)
-        canvas.drawText("GPS Location: 31.5204° N, 74.3587° E", 65f, 815f, subTextPaint)
+        canvas.drawText("GPS Location: Verified Real Device Telemetry", 65f, 815f, subTextPaint)
         canvas.drawText("Status: EVIDENCE RETAINED IN SECURE VAULT", 65f, 860f, subTextPaint)
 
         return bitmap

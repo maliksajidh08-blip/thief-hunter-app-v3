@@ -556,6 +556,24 @@ fun SensorsHubScreen(
                             .testTag("input_disarm_pin")
                     )
 
+                    Button(
+                        onClick = {
+                            val success = viewModel.processVoiceCommand("disarm ${state.masterPin}")
+                            if (success) {
+                                showPinDialog = false
+                                pinInput = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyDark, contentColor = YellowAccent),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .testTag("btn_voice_disarm_dialog")
+                    ) {
+                        Text("🎤 Voice Disarm: \"Disarm ${state.masterPin}\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
@@ -623,19 +641,19 @@ fun SensorsHubScreen(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text("🎯", fontSize = 16.sp)
+                                Text("🔒", fontSize = 16.sp)
                             }
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Smart Context & Activity",
+                                text = "Simple Manual Mode",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = Color.White
                             )
                             Text(
-                                text = "False-Alarm Filter (Zero false alerts while holding or walking)",
+                                text = "Strictly 4 Triggers (Zero false alarms on touch or pocket)",
                                 fontSize = 11.sp,
                                 color = Color.White.copy(alpha = 0.7f)
                             )
@@ -644,13 +662,25 @@ fun SensorsHubScreen(
 
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (tele.deviceContext.allowsAlarm) AlertRed.copy(alpha = 0.25f) else SafeGreen.copy(alpha = 0.25f)
+                        color = when {
+                            state.isArmingCountdown -> AlertRed.copy(alpha = 0.25f)
+                            state.isSystemArmed -> SafeGreen.copy(alpha = 0.25f)
+                            else -> Color.Gray.copy(alpha = 0.25f)
+                        }
                     ) {
                         Text(
-                            text = if (tele.deviceContext.allowsAlarm) "ALARM READY" else "SAFE (NO ALARM)",
+                            text = when {
+                                state.isArmingCountdown -> "${state.countdownRemaining}s COUNTDOWN"
+                                state.isSystemArmed -> "ARMED & SAFE"
+                                else -> "STANDBY"
+                            },
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (tele.deviceContext.allowsAlarm) YellowAccent else SafeGreen,
+                            color = when {
+                                state.isArmingCountdown -> AlertRed
+                                state.isSystemArmed -> SafeGreen
+                                else -> YellowAccent
+                            },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -668,10 +698,10 @@ fun SensorsHubScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
-                            Text("DEVICE CONTEXT", fontSize = 9.sp, color = YellowAccent, fontWeight = FontWeight.Bold)
+                            Text("SECURITY MODE", fontSize = 9.sp, color = YellowAccent, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = tele.deviceContext.displayName,
+                                text = "Manual 30s Guard",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -685,31 +715,15 @@ fun SensorsHubScreen(
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
-                            Text("USER ACTIVITY", fontSize = 9.sp, color = YellowAccent, fontWeight = FontWeight.Bold)
+                            Text("ACTIVE TRIGGERS", fontSize = 9.sp, color = YellowAccent, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = tele.movementActivity.displayName,
-                                fontSize = 12.sp,
+                                text = "Power • USB • SIM • 3x PIN",
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
                         }
-                    }
-                }
-
-                if (tele.isInGracePeriod) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = YellowAccent.copy(alpha = 0.2f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "🛡️ Grace Period Active: Initial movement safely ignored for 5s.",
-                            fontSize = 11.sp,
-                            color = YellowAccent,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
                     }
                 }
             }

@@ -147,26 +147,24 @@ class AutoSleepDetectorEngine(
      */
     fun onSensorTelemetryUpdate(
         totalAccel: Float,
-        isArmed: Boolean,
-        deviceContext: DeviceContext = DeviceContext.TABLE
+        isArmed: Boolean
     ) {
         if (!_sleepState.value.isEnabled) return
-
-        // If phone is actively being held in hand or resting on leg, owner is NOT sleeping
-        if (deviceContext == DeviceContext.HAND || deviceContext == DeviceContext.LEG_OR_BODY) {
-            lastMovementTimestamp = System.currentTimeMillis()
-            _sleepState.update {
-                it.copy(
-                    inactivitySeconds = 0,
-                    lastSleepEventMessage = "Phone in active use (${deviceContext.displayName}). Sleep timer reset."
-                )
-            }
-            return
-        }
 
         val now = System.currentTimeMillis()
         val delta = Math.abs(totalAccel - lastRecordedAcceleration)
         lastRecordedAcceleration = totalAccel
+
+        if (delta > 2.0f) {
+            lastMovementTimestamp = System.currentTimeMillis()
+            _sleepState.update {
+                it.copy(
+                    inactivitySeconds = 0,
+                    lastSleepEventMessage = "Phone moved (Acceleration delta: ${String.format("%.2f", delta)} m/s²). Sleep timer reset."
+                )
+            }
+            return
+        }
 
         // Movement threshold: Delta > 0.8f indicates deliberate movement (ignoring slight vibrations)
         if (delta > 0.8f) {

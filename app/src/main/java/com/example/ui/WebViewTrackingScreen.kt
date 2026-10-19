@@ -103,12 +103,23 @@ fun WebViewTrackingScreen(
     val tracker = state.liveTrackerState
     val context = LocalContext.current
 
-    // Coordinates (real GPS from sensor telemetry or Room database)
-    val curLat = state.lastKnownLocation?.latitude ?: tracker.latitude
-    val curLng = state.lastKnownLocation?.longitude ?: tracker.longitude
-    val latStr = String.format(Locale.US, "%.6f", curLat)
-    val lngStr = String.format(Locale.US, "%.6f", curLng)
-    val mapsUrl = "https://maps.google.com/?q=$latStr,$lngStr"
+    // Real GPS coordinates priority: Tracker State -> Last Fix -> Telemetry
+    val actualLat = when {
+        tracker.latitude != 0.0 -> tracker.latitude
+        state.lastKnownLocation != null && state.lastKnownLocation!!.latitude != 0.0 -> state.lastKnownLocation!!.latitude
+        state.sensorTelemetry.latitude != 0.0 -> state.sensorTelemetry.latitude
+        else -> 0.0
+    }
+    val actualLng = when {
+        tracker.longitude != 0.0 -> tracker.longitude
+        state.lastKnownLocation != null && state.lastKnownLocation!!.longitude != 0.0 -> state.lastKnownLocation!!.longitude
+        state.sensorTelemetry.longitude != 0.0 -> state.sensorTelemetry.longitude
+        else -> 0.0
+    }
+    val isGpsLocked = actualLat != 0.0 && actualLng != 0.0
+    val latStr = if (isGpsLocked) String.format(Locale.US, "%.6f", actualLat) else "Locking..."
+    val lngStr = if (isGpsLocked) String.format(Locale.US, "%.6f", actualLng) else "GPS..."
+    val mapsUrl = if (isGpsLocked) "https://maps.google.com/?q=$latStr,$lngStr" else "https://maps.google.com"
 
     var webViewInstance by remember { mutableStateOf<WebView?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -123,48 +134,103 @@ fun WebViewTrackingScreen(
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    // Helper to send coordinates to website JavaScript
-    fun pushLocationToWebView(wv: WebView?, lat: Double, lng: Double) {
-        if (wv == null) return
+    // Helper to send real GPS coordinates to website JavaScript and override OpenStreetMap
+    fun pushLocationToWebView(
+        wv: WebView?,
+        lat: Double,
+        lng: Double,
+        accuracy: Float = tracker.accuracyMeters,
+        battery: Int = state.sensorTelemetry.batteryPct
+    ) {
+        if (wv == null || (lat == 0.0 && lng == 0.0)) return
         val js = """
             (function() {
-                var lat = $lat;
-                var lng = $lng;
-                if (typeof updateMapLocation === 'function') {
-                    updateMapLocation(lat, lng);
-                } else if (typeof updateMarker === 'function') {
-                    updateMarker(lat, lng);
-                } else if (typeof onLocationReceived === 'function') {
-                    onLocationReceived(lat, lng);
-                } else if (typeof setDeviceLocation === 'function') {
-                    setDeviceLocation(lat, lng);
-                } else if (typeof window.Android !== 'undefined' && typeof window.map !== 'undefined') {
-                    if (window.map && typeof L !== 'undefined') {
-                        if (!window.deviceMarker) {
-                            window.deviceMarker = L.marker([lat, lng]).addTo(window.map);
-                        } else {
-                            window.deviceMarker.setLatLng([lat, lng]);
-                        }
-                        window.map.setView([lat, lng], 16);
+                var targetLat = $lat;
+                var targetLng = $lng;
+                var acc = $accuracy;
+                var bat = "$battery%";
+
+                function updateLeaflet() {
+                    var theMap = (typeof map !== 'undefined' && map) ? map : window.map;
+                    if (!theMap) return false;
+
+                    theMap.setView([targetLat, targetLng], 16);
+
+                    var theMarker = (typeof marker !== 'undefined' && marker) ? marker : window.marker;
+                    if (theMarker) {
+                        theMarker.setLatLng([targetLat, targetLng]);
+                        theMarker.bindPopup(`
+                            <div style="font-family: sans-serif; text-align: center; padding: 8px;">
+                                <strong style="color: #1A237E; font-size: 16px;">🎯 تھیفٹ ہنٹر</strong><br>
+                                <span style="color: #27AE60; font-weight: bold;">🟢 حقیقی GPS فعال (Real GPS)</span><br>
+                                <span style="color: #1565C0; font-size: 13px; font-weight: bold;">` + targetLat.toFixed(6) + `, ` + targetLng.toFixed(6) + `</span><br>
+                                <span style="color: #6C757D; font-size: 11px;">درستگی: ±` + (acc > 0 ? Math.round(acc) + ' میٹر' : '5 میٹر') + `</span>
+                            </div>
+                        `).openPopup();
+                    } else if (typeof L !== 'undefined') {
+                        marker = L.marker([targetLat, targetLng]).addTo(theMap);
                     }
+
+                    if (typeof window.gpsAccuracyCircle !== 'undefined' && window.gpsAccuracyCircle) {
+                        theMap.removeLayer(window.gpsAccuracyCircle);
+                    }
+                    if (typeof L !== 'undefined') {
+                        window.gpsAccuracyCircle = L.circle([targetLat, targetLng], {
+                            color: '#27AE60',
+                            fillColor: '#27AE60',
+                            fillOpacity: 0.15,
+                            radius: (acc > 0 ? acc : 50)
+                        }).addTo(theMap);
+                    }
+
+                    var locSpan = document.getElementById('current-location');
+                    if (locSpan) {
+                        locSpan.textContent = targetLat.toFixed(5) + ', ' + targetLng.toFixed(5) + ' (حقیقی GPS)';
+                    }
+                    var batSpan = document.getElementById('battery');
+                    if (batSpan) {
+                        batSpan.textContent = bat;
+                    }
+                    var netSpan = document.getElementById('network');
+                    if (netSpan) {
+                        netSpan.textContent = 'GPS Active (Android)';
+                    }
+                    return true;
+                }
+
+                if (!updateLeaflet()) {
+                    var retries = 0;
+                    var timer = setInterval(function() {
+                        retries++;
+                        if (updateLeaflet() || retries >= 15) {
+                            clearInterval(timer);
+                        }
+                    }, 300);
                 }
             })();
         """.trimIndent()
         wv.evaluateJavascript(js, null)
     }
 
-    // Periodically (every 30 seconds) push real GPS coordinates to WebView
-    LaunchedEffect(curLat, curLng, webViewInstance) {
+    // Immediately trigger fresh GPS fix when screen opens
+    LaunchedEffect(Unit) {
+        viewModel.requestImmediateGpsFix()
+    }
+
+    // Reactively push whenever real GPS updates
+    LaunchedEffect(actualLat, actualLng, webViewInstance) {
         webViewInstance?.let { wv ->
-            pushLocationToWebView(wv, curLat, curLng)
+            pushLocationToWebView(wv, actualLat, actualLng)
         }
     }
 
+    // Periodically (every 15 seconds) refresh real GPS
     LaunchedEffect(Unit) {
         while (true) {
-            delay(30_000L)
+            delay(15_000L)
+            viewModel.requestImmediateGpsFix()
             webViewInstance?.let { wv ->
-                pushLocationToWebView(wv, curLat, curLng)
+                pushLocationToWebView(wv, actualLat, actualLng)
             }
         }
     }
@@ -284,7 +350,7 @@ fun WebViewTrackingScreen(
                         addJavascriptInterface(
                             WebAppInterface(
                                 context = ctx,
-                                getCurrentLocation = { Pair(curLat, curLng) },
+                                getCurrentLocation = { Pair(actualLat, actualLng) },
                                 onLocationReceivedFromWeb = { lat, lng ->
                                     Toast.makeText(ctx, "Map updated: $lat, $lng", Toast.LENGTH_SHORT).show()
                                 }
@@ -316,7 +382,7 @@ fun WebViewTrackingScreen(
 
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 isLoading = false
-                                pushLocationToWebView(view, curLat, curLng)
+                                pushLocationToWebView(view, actualLat, actualLng)
                             }
 
                             override fun onReceivedError(
@@ -407,9 +473,11 @@ fun WebViewTrackingScreen(
             // FLOATING CENTER GPS BUTTON
             FloatingActionButton(
                 onClick = {
+                    viewModel.requestImmediateGpsFix()
                     webViewInstance?.let { wv ->
-                        pushLocationToWebView(wv, curLat, curLng)
-                        Toast.makeText(context, "Map centered on GPS: $latStr, $lngStr", Toast.LENGTH_SHORT).show()
+                        pushLocationToWebView(wv, actualLat, actualLng)
+                        val msg = if (isGpsLocked) "Centering map on real GPS: $latStr, $lngStr" else "Requesting fresh GPS fix from satellites..."
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     }
                 },
                 containerColor = YellowAccent,

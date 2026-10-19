@@ -23,10 +23,10 @@ class WebAppInterface(
     @JavascriptInterface
     fun getAndroidLocation(): String {
         val loc = getCurrentLocation()
-        return if (loc != null) {
+        return if (loc != null && (loc.first != 0.0 || loc.second != 0.0)) {
             "${loc.first},${loc.second}"
         } else {
-            "31.520400,74.358700" // Fallback coordinates
+            ""
         }
     }
 
@@ -36,7 +36,7 @@ class WebAppInterface(
      */
     @JavascriptInterface
     fun getLatitude(): Double {
-        return getCurrentLocation()?.first ?: 31.520400
+        return getCurrentLocation()?.first ?: 0.0
     }
 
     /**
@@ -45,7 +45,7 @@ class WebAppInterface(
      */
     @JavascriptInterface
     fun getLongitude(): Double {
-        return getCurrentLocation()?.second ?: 74.358700
+        return getCurrentLocation()?.second ?: 0.0
     }
 
     /**

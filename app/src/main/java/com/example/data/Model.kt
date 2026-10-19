@@ -52,8 +52,8 @@ data class MobileDevice(
     val isStolen: Boolean = false,
     val stolenTimestamp: String? = null,
     val emergencyContactPhone: String = "+92 300 1234567",
-    val lastKnownLatitude: Double = 31.5204,
-    val lastKnownLongitude: Double = 74.3587,
+    val lastKnownLatitude: Double = 0.0,
+    val lastKnownLongitude: Double = 0.0,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -87,9 +87,9 @@ data class CommunityAlert(
 )
 
 data class LiveTrackerState(
-    val latitude: Double = 31.5204,
-    val longitude: Double = 74.3587,
-    val locationName: String = "Canal Road, Tech District",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val locationName: String = "Detecting Real GPS...",
     val accuracyMeters: Float = 4.2f,
     val speedKmh: Float = 0.0f,
     val isGpsActive: Boolean = true,
@@ -127,9 +127,9 @@ data class FamilyDeviceNode(
     val isStolen: Boolean = false,
     val isLocked: Boolean = false,
     val isSirenActive: Boolean = false,
-    val latitude: Double = 31.5204,
-    val longitude: Double = 74.3587,
-    val address: String = "Liberty Market, Lahore",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val address: String = "GPS Pending",
     val lastSeenTime: String = "Active now",
     val simNumber: String = "+92 300 ••••111",
     val emergencyPhone: String = "+92 300 4589211",
