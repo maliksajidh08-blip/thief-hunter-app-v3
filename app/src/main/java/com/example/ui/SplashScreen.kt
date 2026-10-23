@@ -64,14 +64,13 @@ fun SplashScreen(
         label = "pulseScale"
     )
 
-    // 2-second splash screen, checks onboarding and login state
+    // 2-second splash screen, checks login state
     LaunchedEffect(Unit) {
         delay(2000)
-        val isOnboardingDone = UserPreferences.isOnboardingCompleted(context)
         val isLoggedIn = UserPreferences.isLoggedIn(context)
         val isBioEnabled = UserPreferences.isBiometricEnabled(context)
 
-        if (isOnboardingDone && isLoggedIn) {
+        if (isLoggedIn) {
             if (isBioEnabled) {
                 viewModel.navigateTo(Screen.UNLOCK)
             } else {

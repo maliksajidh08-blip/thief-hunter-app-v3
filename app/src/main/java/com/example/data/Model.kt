@@ -198,12 +198,8 @@ enum class AlarmSoundType(val id: String, val displayName: String, val icon: Str
 
 enum class Screen(val titleKey: String) {
     SPLASH("app_name"),
-    SETUP("setup"),
     LOGIN("login"),
-    PASSWORD_SETUP("password_setup"),
-    PROFILE_NAME("profile_name"),
-    PHONE_VERIFICATION("phone_verification"),
-    FINGERPRINT_SETUP("fingerprint_setup"),
+    SIGNUP("signup"),
     UNLOCK("unlock"),
     HOME("home_title"),
     FAMILY_NETWORK("family_network"),

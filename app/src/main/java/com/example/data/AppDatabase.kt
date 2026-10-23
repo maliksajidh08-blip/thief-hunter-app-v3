@@ -248,9 +248,10 @@ interface DeviceDao {
         LocationHistoryEntity::class,
         OwnerFaceSampleEntity::class,
         UserDeviceEntity::class,
-        DeviceEntity::class
+        DeviceEntity::class,
+        UserEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -260,6 +261,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ownerFaceDao(): OwnerFaceDao
     abstract fun userDeviceDao(): UserDeviceDao
     abstract fun deviceDao(): DeviceDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile

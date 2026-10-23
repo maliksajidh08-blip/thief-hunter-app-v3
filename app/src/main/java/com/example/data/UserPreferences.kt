@@ -109,6 +109,14 @@ object UserPreferences {
         getPrefs(context).edit().putBoolean(KEY_IS_LOGGED_IN, loggedIn).apply()
     }
 
+    fun setUserId(context: Context, id: Long) {
+        getPrefs(context).edit().putLong("user_id", id).apply()
+    }
+
+    fun getUserId(context: Context): Long {
+        return getPrefs(context).getLong("user_id", -1L)
+    }
+
     fun isOnboardingCompleted(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_IS_ONBOARDING_COMPLETED, false)
     }
