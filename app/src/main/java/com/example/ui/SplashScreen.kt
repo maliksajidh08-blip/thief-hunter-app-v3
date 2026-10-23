@@ -43,6 +43,8 @@ import com.example.data.Screen
 import com.example.ui.theme.NavyDark
 import com.example.ui.theme.NavyPrimary
 import com.example.ui.theme.YellowAccent
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.UserPreferences
 import kotlinx.coroutines.delay
 
 @Composable
@@ -50,6 +52,7 @@ fun SplashScreen(
     viewModel: ThiefHunterViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.95f,
@@ -61,14 +64,21 @@ fun SplashScreen(
         label = "pulseScale"
     )
 
-    // 2-second splash screen, checks if first launch setup is completed
+    // 2-second splash screen, checks onboarding and login state
     LaunchedEffect(Unit) {
         delay(2000)
-        if (!viewModel.isSetupCompleted()) {
-            viewModel.navigateTo(Screen.SETUP)
-        } else if (viewModel.isUserLoggedIn()) {
-            viewModel.navigateTo(Screen.HOME)
+        val isOnboardingDone = UserPreferences.isOnboardingCompleted(context)
+        val isLoggedIn = UserPreferences.isLoggedIn(context)
+        val isBioEnabled = UserPreferences.isBiometricEnabled(context)
+
+        if (isOnboardingDone && isLoggedIn) {
+            if (isBioEnabled) {
+                viewModel.navigateTo(Screen.UNLOCK)
+            } else {
+                viewModel.navigateTo(Screen.HOME)
+            }
         } else {
+            // First Launch or Logged Out -> Advance to Login
             viewModel.navigateTo(Screen.LOGIN)
         }
     }

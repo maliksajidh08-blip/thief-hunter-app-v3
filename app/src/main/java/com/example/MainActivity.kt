@@ -86,6 +86,12 @@ import com.example.ui.SensorsHubScreen
 import com.example.ui.SettingsScreen
 import com.example.ui.SetupScreen
 import com.example.ui.AlarmActiveOverlay
+import com.example.ui.PasswordSetupScreen
+import com.example.ui.ProfileNameScreen
+import com.example.ui.PhoneVerificationScreen
+import com.example.ui.FingerprintSetupScreen
+import com.example.ui.UnlockScreen
+import com.example.ui.OnboardingViewModel
 import com.example.ui.SplashScreen
 import com.example.ui.StolenDevicesScreen
 import com.example.ui.ThiefHunterViewModel
@@ -97,6 +103,7 @@ import com.example.ui.theme.YellowAccent
 class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     private val viewModel: ThiefHunterViewModel by viewModels()
+    private val onboardingViewModel: OnboardingViewModel by viewModels()
 
     private var touchDownTimeMs: Long = 0L
     private var touchDownX: Float = 0f
@@ -137,7 +144,10 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
         setContent {
             MyApplicationTheme {
-                ThiefHunterApp(viewModel = viewModel)
+                ThiefHunterApp(
+                    viewModel = viewModel,
+                    onboardingViewModel = onboardingViewModel
+                )
             }
         }
     }
@@ -145,10 +155,25 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
+fun ThiefHunterApp(
+    viewModel: ThiefHunterViewModel,
+    onboardingViewModel: OnboardingViewModel
+) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    val isFullscreenRoute = when (state.currentScreen) {
+        Screen.SPLASH,
+        Screen.LOGIN,
+        Screen.PASSWORD_SETUP,
+        Screen.PROFILE_NAME,
+        Screen.PHONE_VERIFICATION,
+        Screen.FINGERPRINT_SETUP,
+        Screen.UNLOCK,
+        Screen.SETUP -> true
+        else -> false
+    }
 
     var showLanguageMenu by remember { mutableStateOf(false) }
 
@@ -240,7 +265,7 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
-                    if (state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN && state.currentScreen != Screen.SETUP) {
+                    if (!isFullscreenRoute) {
                     TopAppBar(
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -281,7 +306,7 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
                             }
                         },
                         navigationIcon = {
-                            if (state.currentScreen != Screen.HOME && state.currentScreen != Screen.LOGIN && state.currentScreen != Screen.SETUP) {
+                            if (!isFullscreenRoute && state.currentScreen != Screen.HOME) {
                                 IconButton(
                                     onClick = { viewModel.navigateTo(Screen.HOME) },
                                     modifier = Modifier.testTag("btn_back")
@@ -391,8 +416,13 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
             ) { targetScreen ->
                 when (targetScreen) {
                     Screen.SPLASH -> SplashScreen(viewModel = viewModel)
+                    Screen.LOGIN -> LoginScreen(viewModel = viewModel, onboardingViewModel = onboardingViewModel)
+                    Screen.PASSWORD_SETUP -> PasswordSetupScreen(viewModel = viewModel, onboardingViewModel = onboardingViewModel)
+                    Screen.PROFILE_NAME -> ProfileNameScreen(viewModel = viewModel, onboardingViewModel = onboardingViewModel)
+                    Screen.PHONE_VERIFICATION -> PhoneVerificationScreen(viewModel = viewModel, onboardingViewModel = onboardingViewModel)
+                    Screen.FINGERPRINT_SETUP -> FingerprintSetupScreen(viewModel = viewModel, onboardingViewModel = onboardingViewModel)
+                    Screen.UNLOCK -> UnlockScreen(viewModel = viewModel)
                     Screen.SETUP -> SetupScreen(viewModel = viewModel)
-                    Screen.LOGIN -> LoginScreen(viewModel = viewModel)
                     Screen.HOME -> HomeScreen(viewModel = viewModel)
                     Screen.FAMILY_NETWORK -> FamilyNetworkScreen(viewModel = viewModel)
                     Screen.DEVICE_REGISTRATION -> DeviceRegistrationScreen(viewModel = viewModel)

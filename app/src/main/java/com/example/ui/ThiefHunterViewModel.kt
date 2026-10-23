@@ -12,6 +12,7 @@ import com.example.data.AlarmSoundType
 import com.example.data.AppDatabase
 import com.example.data.AppLanguage
 import com.example.data.AppPreferences
+import com.example.data.UserPreferences
 import com.example.data.CommunityAlert
 import com.example.data.FamilyAlert
 import com.example.data.FamilyDeviceNode
@@ -1335,6 +1336,7 @@ class ThiefHunterViewModel(application: Application) : AndroidViewModel(applicat
 
     fun logout() {
         val app = getApplication<Application>()
+        UserPreferences.logout(app)
         AppPreferences.clearUserSession(app)
         _uiState.update {
             it.copy(
