@@ -84,6 +84,8 @@ import com.example.ui.MyMobilesScreen
 import com.example.ui.ReportTheftScreen
 import com.example.ui.SensorsHubScreen
 import com.example.ui.SettingsScreen
+import com.example.ui.SetupScreen
+import com.example.ui.AlarmActiveOverlay
 import com.example.ui.SplashScreen
 import com.example.ui.StolenDevicesScreen
 import com.example.ui.ThiefHunterViewModel
@@ -92,7 +94,7 @@ import com.example.ui.theme.NavyDark
 import com.example.ui.theme.NavyPrimary
 import com.example.ui.theme.YellowAccent
 
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     private val viewModel: ThiefHunterViewModel by viewModels()
 
@@ -234,10 +236,11 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-        Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                if (state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
+                topBar = {
+                    if (state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN && state.currentScreen != Screen.SETUP) {
                     TopAppBar(
                         title = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -278,7 +281,7 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
                             }
                         },
                         navigationIcon = {
-                            if (state.currentScreen != Screen.HOME && state.currentScreen != Screen.LOGIN) {
+                            if (state.currentScreen != Screen.HOME && state.currentScreen != Screen.LOGIN && state.currentScreen != Screen.SETUP) {
                                 IconButton(
                                     onClick = { viewModel.navigateTo(Screen.HOME) },
                                     modifier = Modifier.testTag("btn_back")
@@ -388,6 +391,7 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
             ) { targetScreen ->
                 when (targetScreen) {
                     Screen.SPLASH -> SplashScreen(viewModel = viewModel)
+                    Screen.SETUP -> SetupScreen(viewModel = viewModel)
                     Screen.LOGIN -> LoginScreen(viewModel = viewModel)
                     Screen.HOME -> HomeScreen(viewModel = viewModel)
                     Screen.FAMILY_NETWORK -> FamilyNetworkScreen(viewModel = viewModel)
@@ -404,5 +408,12 @@ fun ThiefHunterApp(viewModel: ThiefHunterViewModel) {
                 }
             }
         }
+
+        // Active Siren Full-screen Fingerprint Disarm Overlay
+        if (state.isSirenPlaying) {
+            AlarmActiveOverlay(viewModel = viewModel)
+        }
     }
 }
+}
+

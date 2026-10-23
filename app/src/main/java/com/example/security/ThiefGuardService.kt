@@ -1,7 +1,10 @@
 package com.example.security
 
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Binder
 import android.os.IBinder
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +43,19 @@ class ThiefGuardService : Service() {
     private val _isServiceRunning = MutableStateFlow(false)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning.asStateFlow()
 
+    // Receiver listening for device unlock (system fingerprint, PIN, pattern)
+    private val unlockReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_USER_PRESENT) {
+                // If alarm is active AND user unlocks device -> stopAlarm()
+                if (sirenEngine.isRinging || sensorManager.activeTrigger.value != null) {
+                    android.util.Log.i("ThiefGuardService", "ACTION_USER_PRESENT detected: user unlocked device. Stopping alarm.")
+                    disarmAndStopAlarm()
+                }
+            }
+        }
+    }
+
     inner class LocalBinder : Binder() {
         fun getService(): ThiefGuardService = this@ThiefGuardService
     }
@@ -52,6 +68,10 @@ class ThiefGuardService : Service() {
         locationTracker = OfflineLocationTrackerEngine(this, scope)
         locationTracker.startTracking()
         batteryOptimizer = BatteryOptimizer.getInstance(this)
+
+        // Register unlock listener
+        val filter = IntentFilter(Intent.ACTION_USER_PRESENT)
+        registerReceiver(unlockReceiver, filter)
 
         sensorManager.onTriggerAlarm = { reason ->
             if (sensorManager.isArmed.value) {
@@ -174,6 +194,9 @@ class ThiefGuardService : Service() {
     }
 
     override fun onDestroy() {
+        try {
+            unregisterReceiver(unlockReceiver)
+        } catch (_: Exception) {}
         telemetryCollectJob?.cancel()
         locationTracker.stopTracking()
         sensorManager.onDestroy()

@@ -61,10 +61,12 @@ fun SplashScreen(
         label = "pulseScale"
     )
 
-    // 2-second splash screen, checks if user is logged in
+    // 2-second splash screen, checks if first launch setup is completed
     LaunchedEffect(Unit) {
         delay(2000)
-        if (viewModel.isUserLoggedIn()) {
+        if (!viewModel.isSetupCompleted()) {
+            viewModel.navigateTo(Screen.SETUP)
+        } else if (viewModel.isUserLoggedIn()) {
             viewModel.navigateTo(Screen.HOME)
         } else {
             viewModel.navigateTo(Screen.LOGIN)

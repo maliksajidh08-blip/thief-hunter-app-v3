@@ -43,6 +43,7 @@ import com.example.security.ThiefGuardService
 import com.example.security.TriggerReason
 import com.example.security.FaceRecognitionHelper
 import com.example.security.FaceCheckResult
+import com.example.security.BiometricHelper
 import com.example.security.BatteryOptimizer
 import com.example.security.BatteryThermalInfo
 import com.example.data.BatteryMode
@@ -72,6 +73,8 @@ data class UiState(
     val userDisplayName: String = "User",
     val userPhotoUrl: String? = null,
     val isLoggedIn: Boolean = false,
+    val isSetupCompleted: Boolean = false,
+    val isBiometricEnabled: Boolean = true,
     val selectedLanguage: AppLanguage = AppLanguage.ENGLISH,
     val guardConfig: GuardConfig = GuardConfig(),
     val sensorTelemetry: SensorTelemetry = SensorTelemetry(),
@@ -263,6 +266,9 @@ class ThiefHunterViewModel(application: Application) : AndroidViewModel(applicat
         val savedDelay = AppPreferences.getArmingDelaySeconds(app)
         val isGuardActive = AppPreferences.isGuardServiceActive(app)
         val isArmedSaved = AppPreferences.isSystemArmed(app)
+        val isSetup = AppPreferences.isSetupCompleted(app)
+        val isBiometric = AppPreferences.isBiometricEnabled(app)
+        val ownerName = AppPreferences.getOwnerName(app)
 
         if (isChargerGuardSaved) {
             chargerGuard.activate()
@@ -272,7 +278,9 @@ class ThiefHunterViewModel(application: Application) : AndroidViewModel(applicat
             it.copy(
                 userEmail = savedEmail,
                 isLoggedIn = isUserLogged,
-                userDisplayName = displayName,
+                isSetupCompleted = isSetup,
+                isBiometricEnabled = isBiometric,
+                userDisplayName = if (ownerName.isNotBlank() && ownerName != "User") ownerName else displayName,
                 userPhotoUrl = photoUrl,
                 selectedAlarmSound = savedSound,
                 isChargerGuardActive = chargerGuard.guardState.value.isActive,
@@ -1264,6 +1272,46 @@ class ThiefHunterViewModel(application: Application) : AndroidViewModel(applicat
 
     fun isUserLoggedIn(): Boolean {
         return AppPreferences.isLoggedIn(getApplication())
+    }
+
+    fun isSetupCompleted(): Boolean {
+        return AppPreferences.isSetupCompleted(getApplication())
+    }
+
+    fun isBiometricAvailable(): Boolean {
+        return BiometricHelper.checkIfBiometricAvailable(getApplication())
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        val app = getApplication<Application>()
+        AppPreferences.setBiometricEnabled(app, enabled)
+        _uiState.update { it.copy(isBiometricEnabled = enabled) }
+        showMessage(if (enabled) "Fingerprint (Biometric) verification enabled." else "Fingerprint verification disabled.")
+    }
+
+    fun saveInitialSetup(name: String, phone: String, email: String, pin: String, enableBiometric: Boolean) {
+        val app = getApplication<Application>()
+        AppPreferences.setOwnerName(app, name.trim())
+        AppPreferences.setOwnerPhone(app, phone.trim())
+        AppPreferences.setOwnerEmail(app, email.trim())
+        AppPreferences.setMasterPin(app, pin.trim())
+        AppPreferences.setBiometricEnabled(app, enableBiometric)
+        AppPreferences.setSetupCompleted(app, true)
+        AppPreferences.setUserEmail(app, email.trim())
+        AppPreferences.setUserDisplayName(app, name.trim())
+
+        _uiState.update {
+            it.copy(
+                isSetupCompleted = true,
+                isBiometricEnabled = enableBiometric,
+                userDisplayName = name.trim(),
+                userEmail = email.trim(),
+                isLoggedIn = true,
+                masterPin = pin.trim()
+            )
+        }
+        showMessage("Setup completed! Welcome, ${name.trim()}.")
+        navigateTo(Screen.HOME)
     }
 
     fun loginWithGoogle(email: String, displayName: String? = null, photoUrl: String? = null) {

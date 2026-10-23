@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -49,6 +50,8 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Usb
+import androidx.fragment.app.FragmentActivity
+import com.example.security.BiometricHelper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -532,7 +535,156 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 1. ALL 6 SECURITY FEATURES MASTER CONFIGURATION
+        // FINGERPRINT (BIOMETRIC) SECURITY CARD
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(18.dp)
+                )
+        ) {
+            val context = LocalContext.current
+            val activity = context as? FragmentActivity
+            val isAvailable = remember(context) { BiometricHelper.checkIfBiometricAvailable(context) }
+            var testStatus by remember { mutableStateOf<String?>(null) }
+
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(if (state.isBiometricEnabled) SafeGreen.copy(alpha = 0.15f) else Color.Gray.copy(alpha = 0.15f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Fingerprint,
+                                contentDescription = "Fingerprint",
+                                tint = if (state.isBiometricEnabled) SafeGreen else Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Enable Fingerprint",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Disarm active sirens instantly using device fingerprint sensor",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = state.isBiometricEnabled,
+                        onCheckedChange = { isChecked ->
+                            viewModel.setBiometricEnabled(isChecked)
+                            if (isChecked) {
+                                if (!isAvailable) {
+                                    viewModel.showMessage("⚠️ No enrolled fingerprint found in Android settings")
+                                } else if (activity != null) {
+                                    BiometricHelper.authenticate(
+                                        activity = activity,
+                                        title = "Biometric Setup",
+                                        subtitle = "Touch sensor to confirm your fingerprint"
+                                    ) { success ->
+                                        if (success) {
+                                            viewModel.showMessage("✓ Fingerprint verified and linked!")
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = SafeGreen,
+                            checkedTrackColor = SafeGreen.copy(alpha = 0.35f)
+                        ),
+                        modifier = Modifier.testTag("switch_enable_fingerprint")
+                    )
+                }
+
+                if (state.isBiometricEnabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (!isAvailable) {
+                        Surface(
+                            color = AlertRed.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Fingerprint,
+                                    contentDescription = null,
+                                    tint = AlertRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Hardware sensor not available or no fingerprint enrolled in Android Settings.",
+                                    fontSize = 11.sp,
+                                    color = AlertRed
+                                )
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = testStatus ?: "✓ Ready: touch sensor during alarms to disarm",
+                                fontSize = 12.sp,
+                                color = if (testStatus?.contains("Failed") == true) AlertRed else SafeGreen,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            OutlinedButton(
+                                onClick = {
+                                    if (activity != null) {
+                                        BiometricHelper.authenticate(
+                                            activity = activity,
+                                            title = "Test Fingerprint Sensor",
+                                            subtitle = "Touch sensor to test disarm action"
+                                        ) { success ->
+                                            testStatus = if (success) "✓ Fingerprint verified successfully!" else "❌ Verification Failed!"
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("btn_test_fingerprint")
+                            ) {
+                                Text("Test Sensor", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
         Card(
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

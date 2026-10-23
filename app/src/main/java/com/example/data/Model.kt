@@ -198,6 +198,7 @@ enum class AlarmSoundType(val id: String, val displayName: String, val icon: Str
 
 enum class Screen(val titleKey: String) {
     SPLASH("app_name"),
+    SETUP("setup"),
     LOGIN("login"),
     HOME("home_title"),
     FAMILY_NETWORK("family_network"),

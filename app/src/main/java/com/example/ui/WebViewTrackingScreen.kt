@@ -330,13 +330,18 @@ fun WebViewTrackingScreen(
                     .testTag("webview_osm_map"),
                 factory = { ctx ->
                     WebView(ctx).apply {
+                        // Enforce RTL layout direction and text direction for Urdu
+                        layoutDirection = android.view.View.LAYOUT_DIRECTION_RTL
+                        textDirection = android.view.View.TEXT_DIRECTION_RTL
+
                         settings.apply {
                             javaScriptEnabled = true
                             domStorageEnabled = true
+                            setSupportZoom(true)
+                            defaultTextEncodingName = "UTF-8"
                             setGeolocationEnabled(true)
                             databaseEnabled = true
                             cacheMode = if (isOnline()) WebSettings.LOAD_DEFAULT else WebSettings.LOAD_CACHE_ELSE_NETWORK
-                            setSupportZoom(true)
                             builtInZoomControls = true
                             displayZoomControls = false
                             useWideViewPort = true
@@ -382,6 +387,10 @@ fun WebViewTrackingScreen(
 
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 isLoading = false
+                                view?.evaluateJavascript(
+                                    "try { document.documentElement.setAttribute('dir', 'rtl'); document.documentElement.setAttribute('lang', 'ur'); document.body.style.direction = 'rtl'; } catch(e){}",
+                                    null
+                                )
                                 pushLocationToWebView(view, actualLat, actualLng)
                             }
 

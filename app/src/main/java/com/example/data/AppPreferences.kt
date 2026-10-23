@@ -224,4 +224,49 @@ object AppPreferences {
     fun setOwnerWalkVariance(context: Context, variance: Float) {
         getPrefs(context).edit().putFloat(KEY_OWNER_WALK_VARIANCE, variance).apply()
     }
+
+    // Setup & First Launch Preferences
+    fun isSetupCompleted(context: Context): Boolean {
+        return getPrefs(context).getBoolean("is_setup_completed", false)
+    }
+
+    fun setSetupCompleted(context: Context, completed: Boolean) {
+        getPrefs(context).edit().putBoolean("is_setup_completed", completed).apply()
+    }
+
+    fun getOwnerName(context: Context): String {
+        return getPrefs(context).getString("owner_name", getUserDisplayName(context)) ?: "Owner"
+    }
+
+    fun setOwnerName(context: Context, name: String) {
+        getPrefs(context).edit().putString("owner_name", name).apply()
+        setUserDisplayName(context, name)
+    }
+
+    fun getOwnerPhone(context: Context): String {
+        return getPrefs(context).getString("owner_phone", getEmergencyPhone(context)) ?: "+92 300 4589211"
+    }
+
+    fun setOwnerPhone(context: Context, phone: String) {
+        getPrefs(context).edit().putString("owner_phone", phone).apply()
+        setEmergencyPhone(context, phone)
+    }
+
+    fun getOwnerEmail(context: Context): String {
+        return getPrefs(context).getString("owner_email", getUserEmail(context) ?: "") ?: ""
+    }
+
+    fun setOwnerEmail(context: Context, email: String) {
+        getPrefs(context).edit().putString("owner_email", email).apply()
+        setUserEmail(context, email)
+    }
+
+    // Biometric / Fingerprint Settings
+    fun isBiometricEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean("is_biometric_enabled", true)
+    }
+
+    fun setBiometricEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean("is_biometric_enabled", enabled).apply()
+    }
 }
