@@ -202,7 +202,11 @@ fun ThiefHunterApp(
 
     // Handle back button
     BackHandler(enabled = state.currentScreen != Screen.HOME && state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN) {
-        viewModel.navigateTo(Screen.HOME)
+        if (state.currentScreen == Screen.SIGNUP) {
+            viewModel.navigateTo(Screen.LOGIN)
+        } else {
+            viewModel.navigateTo(Screen.HOME)
+        }
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -229,9 +233,9 @@ fun ThiefHunterApp(
         }
     }
 
-    // Force Login if not logged in and not on Splash
+    // Force Login if not logged in and not on Splash, Login, or Signup
     LaunchedEffect(state.isLoggedIn, state.currentScreen) {
-        if (state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN && !state.isLoggedIn) {
+        if (state.currentScreen != Screen.SPLASH && state.currentScreen != Screen.LOGIN && state.currentScreen != Screen.SIGNUP && !state.isLoggedIn) {
             viewModel.navigateTo(Screen.LOGIN)
         }
     }

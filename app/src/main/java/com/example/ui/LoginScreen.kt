@@ -359,7 +359,10 @@ fun LoginScreen(
 
                     // Create New Account Button (Green or Secondary Navy)
                     Button(
-                        onClick = { viewModel.navigateTo(Screen.SIGNUP) },
+                        onClick = {
+                            authViewModel.resetSignup()
+                            viewModel.navigateTo(Screen.SIGNUP)
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SafeGreen,
                             contentColor = Color.White
